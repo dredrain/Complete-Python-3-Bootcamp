@@ -1,7 +1,8 @@
-tag,load_kw,voltage_v,length_m,phases,power_factor,conductor,insulation,method,ambient_c,circuits_grouped,vd_limit_pct
-PNL-A1 feeder,75,400,45,3,0.9,Cu,XLPE,E,35,3,3
-CRAC-01,30,400,60,3,0.85,Cu,XLPE,E,40,4,3
-UPS-out 01,120,400,25,3,0.95,Cu,XLPE,C,30,1,2
-Lighting board L2,8,400,90,3,0.9,Cu,XLPE,E,30,2,3
-Office socket ckt,3.5,230,35,1,0.9,Cu,XLPE,C,30,1,5
-Pump house feeder,55,400,150,3,0.85,Cu,XLPE,E,35,2,4
+tag,load_kw,voltage_v,length_m,phases,power_factor,conductor,insulation,method,ambient_c,circuits_grouped,vd_limit_pct,iscc_ka,fault_time_s
+PNL-A1 feeder,75,400,45,3,0.9,Cu,XLPE,E,35,3,3,10,0.2
+CRAC-01,30,400,60,3,0.85,Cu,XLPE,E,40,4,3,6,0.2
+UPS-out 01,120,400,25,3,0.95,Cu,XLPE,C,30,1,2,25,0.1
+Lighting board L2,8,400,90,3,0.9,Cu,PVC,B1,30,2,3,0,0.2
+Office socket ckt,3.5,230,35,1,0.9,Cu,PVC,C,30,1,5,0,0.2
+Pump house feeder,55,400,150,3,0.85,Al,XLPE,E,35,2,4,8,0.2
+Yard genset tie,90,400,120,3,0.9,Al,XLPE,F,40,3,4,16,0.2

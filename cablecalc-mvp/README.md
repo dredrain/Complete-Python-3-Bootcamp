@@ -34,22 +34,33 @@ No dependencies — Python 3.8+ standard library only. Tests: `python3 tests/tes
 3. **Conductor selection**: smallest standard size whose tabulated `Iz ≥ Iz'`.
 4. **Voltage drop** `ΔU = k · Ib · L · (R·cosφ + X·sinφ)`; auto-upsizes if the
    percentage exceeds the per-cable limit.
+5. **Short-circuit withstand** (optional): adiabatic check `S ≥ I_scc·√t / k`
+   (IEC 60364-4-43 / 60909); auto-upsizes if the section can't survive the fault.
 
 Input columns: `tag, load_kw, voltage_v, length_m, phases, power_factor,
-conductor, insulation, method, ambient_c, circuits_grouped, vd_limit_pct`
-(only the first four are mandatory).
+conductor, insulation, method, ambient_c, circuits_grouped, vd_limit_pct,
+iscc_ka, fault_time_s` (only the first four are mandatory).
 
-## Scope of the MVP (be honest with buyers)
+## Scope (v0.2)
 
-- Ampacity dataset: **Cu / XLPE**, installation methods **C and E**, 30 °C base —
-  a representative subset of IEC 60364-5-52. Aluminium, PVC and more methods are
-  stubbed in `cablecalc/data.py` and easy to extend.
-- This is an engineering aid, **not a certified design tool**. The report says so.
+- **Conductors**: copper and aluminium.
+- **Insulation**: XLPE (90 °C) and PVC (70 °C), with insulation-specific ambient
+  correction (Ca).
+- **Installation methods**: B1, C, E, F.
+- **Short-circuit**: adiabatic thermal check with IEC 60364-4-43 k constants
+  (Cu/Al × PVC/XLPE).
+- **Data honesty**: the copper/XLPE ampacities are a representative subset of
+  IEC 60364-5-52; PVC and aluminium ampacities are derived from that reference by
+  documented first-order derating factors (`INSULATION_DERATING`,
+  `MATERIAL_DERATING` in `cablecalc/data.py`) — designed to be swapped for exact
+  tabulated values. This is an engineering aid, **not a certified design tool**.
 
 ## Productization checklist (turn this into income)
 
-- [ ] Resolve the **IP/employer question** first (see strategy doc, section 5).
-- [ ] Extend `data.py`: Al, PVC, methods A/B/D/F, full Ca/Cg/soil tables.
+- [x] IP/employer question reviewed (clear to proceed).
+- [x] Engine extended: Cu/Al, XLPE/PVC, methods B1/C/E/F, short-circuit check.
+- [ ] Swap derived PVC/Al ampacities for exact IEC 60364-5-52 tabulated values.
+- [ ] Add methods A1/A2/B2/D (incl. buried, with soil-resistivity factors).
 - [ ] Add a one-page landing + Gumroad/Lemon Squeezy checkout.
 - [ ] Tiered pricing idea:
   - **Lite** (€29, one-off): CSV → HTML/PDF report, Cu/XLPE.
@@ -63,10 +74,11 @@ conductor, insulation, method, ambient_c, circuits_grouped, vd_limit_pct`
 ```
 cablecalc-mvp/
 ├── cablecalc/
-│   ├── data.py      # IEC reference tables (cited; extend here)
-│   ├── engine.py    # current, ampacity selection, voltage drop
-│   └── report.py    # HTML (printable to PDF) + Markdown report
-├── cli.py           # command-line entry point
+│   ├── data.py           # IEC reference tables + derating models (extend here)
+│   ├── engine.py         # current, ampacity selection, voltage drop
+│   ├── short_circuit.py  # adiabatic short-circuit withstand (IEC 60364-4-43)
+│   └── report.py         # HTML (printable to PDF) + Markdown report
+├── cli.py                # command-line entry point
 ├── sample_cable_schedule.csv
 ├── tests/test_engine.py
 └── LICENSE-COMMERCIAL.md

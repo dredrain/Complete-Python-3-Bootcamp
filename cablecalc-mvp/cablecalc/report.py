@@ -7,6 +7,7 @@ from html import escape
 def _row(r):
     status = "PASS" if r.ok else "FAIL"
     cls = "ok" if r.ok else "fail"
+    smin = f"{r.smin_scc_mm2:.1f}" if r.smin_scc_mm2 else "-"
     return f"""
       <tr class="{cls}">
         <td>{escape(r.tag)}</td>
@@ -16,6 +17,7 @@ def _row(r):
         <td>{r.size_mm2:g}</td>
         <td>{r.iz_table_a:.0f}</td>
         <td>{r.vd_pct:.2f}</td>
+        <td>{smin}</td>
         <td class="status">{status}</td>
       </tr>"""
 
@@ -61,7 +63,8 @@ def render_html(results, *, project="Untitled project", revision="A",
   <table>
     <thead><tr>
       <th>Cable tag</th><th>Ib (A)</th><th>Iz' req (A)</th><th>Ca / Cg</th>
-      <th>Size (mm2)</th><th>Iz table (A)</th><th>VD (%)</th><th>Status</th>
+      <th>Size (mm2)</th><th>Iz table (A)</th><th>VD (%)</th>
+      <th>S<sub>min</sub> SC (mm2)</th><th>Status</th>
     </tr></thead>
     <tbody>{rows}</tbody>
   </table>
@@ -77,12 +80,13 @@ def render_html(results, *, project="Untitled project", revision="A",
 
 def render_markdown(results, *, project="Untitled project", revision="A"):
     lines = [f"# Cable Calculation Report - {project} (Rev {revision})", ""]
-    lines.append("| Tag | Ib (A) | Iz' req (A) | Ca | Cg | Size mm2 | Iz (A) | VD % | Status |")
-    lines.append("|---|---|---|---|---|---|---|---|---|")
+    lines.append("| Tag | Ib (A) | Iz' req (A) | Ca | Cg | Size mm2 | Iz (A) | VD % | Smin SC | Status |")
+    lines.append("|---|---|---|---|---|---|---|---|---|---|")
     for r in results:
+        smin = f"{r.smin_scc_mm2:.1f}" if r.smin_scc_mm2 else "-"
         lines.append(
             f"| {r.tag} | {r.ib_a:.1f} | {r.iz_required_a:.1f} | {r.ca:.2f} | "
             f"{r.cg:.2f} | {r.size_mm2:g} | {r.iz_table_a:.0f} | {r.vd_pct:.2f} | "
-            f"{'PASS' if r.ok else 'FAIL'} |"
+            f"{smin} | {'PASS' if r.ok else 'FAIL'} |"
         )
     return "\n".join(lines) + "\n"

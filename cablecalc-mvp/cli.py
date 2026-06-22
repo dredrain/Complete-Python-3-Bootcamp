@@ -7,10 +7,12 @@ Usage:
 
 Input CSV columns (header required):
     tag, load_kw, voltage_v, length_m, phases, power_factor,
-    conductor, insulation, method, ambient_c, circuits_grouped, vd_limit_pct
+    conductor, insulation, method, ambient_c, circuits_grouped, vd_limit_pct,
+    iscc_ka, fault_time_s
 
 Only tag, load_kw, voltage_v and length_m are mandatory; the rest fall back
-to sensible defaults (3-phase, pf 0.9, Cu/XLPE, method E, 30 C, 1 circuit, 5%).
+to sensible defaults (3-phase, pf 0.9, Cu/XLPE, method E, 30 C, 1 circuit, 5%,
+no short-circuit check, 0.2 s fault time).
 """
 
 import argparse
@@ -47,6 +49,8 @@ def load_schedule(path):
                 ambient_c=_f(row, "ambient_c", 30.0),
                 circuits_grouped=_f(row, "circuits_grouped", 1),
                 vd_limit_pct=_f(row, "vd_limit_pct", 5.0),
+                iscc_ka=_f(row, "iscc_ka", 0.0),
+                fault_time_s=_f(row, "fault_time_s", 0.2),
             ))
     return cables
 

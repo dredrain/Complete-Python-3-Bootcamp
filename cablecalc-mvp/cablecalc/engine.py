@@ -3,14 +3,15 @@
 Workflow per cable:
   1. Compute required Iz' = Ib / (Ca * Cg)
   2. Select the smallest standard size whose tabulated Iz >= Iz'
-  3. Compute voltage drop at the selected size; if it exceeds the limit,
-     step up until both ampacity and voltage-drop checks pass.
+  3. Check voltage drop; step up until within the limit.
+  4. If a short-circuit current is given, check adiabatic withstand and step
+     up until the section survives the fault (IEC 60364-4-43).
 """
 
 from dataclasses import dataclass, field
 from math import sqrt
 
-from . import data
+from . import data, short_circuit
 
 
 @dataclass
@@ -22,11 +23,13 @@ class CableInput:
     phases: int = 3         # 3 or 1
     power_factor: float = 0.9
     conductor: str = "Cu"   # "Cu" or "Al"
-    insulation: str = "XLPE"
-    method: str = "E"       # installation method (C, E ...)
+    insulation: str = "XLPE"  # "XLPE" or "PVC"
+    method: str = "E"       # installation method: B1, C, E, F
     ambient_c: float = 30.0
     circuits_grouped: int = 1
     vd_limit_pct: float = 5.0
+    iscc_ka: float = 0.0    # prospective short-circuit current, kA (0 = skip)
+    fault_time_s: float = 0.2
 
 
 @dataclass
@@ -40,13 +43,15 @@ class CableResult:
     iz_table_a: float
     vd_volts: float
     vd_pct: float
+    smin_scc_mm2: float
     ampacity_ok: bool
     vd_ok: bool
+    scc_ok: bool
     notes: list = field(default_factory=list)
 
     @property
     def ok(self):
-        return self.ampacity_ok and self.vd_ok
+        return self.ampacity_ok and self.vd_ok and self.scc_ok
 
 
 def design_current(load_kw, voltage_v, phases, power_factor):
@@ -77,59 +82,70 @@ def voltage_drop(cable: CableInput, size_mm2, ib_a):
 
 
 def _iz_table(cable: CableInput):
-    if cable.conductor != "Cu" or cable.insulation != "XLPE":
+    try:
+        by_method = data.IZ[cable.conductor][cable.insulation]
+    except KeyError:
         raise ValueError(
-            "MVP ampacity dataset only covers Cu/XLPE; extend data.py for others."
+            f"Unsupported conductor/insulation '{cable.conductor}/{cable.insulation}'."
         )
-    if cable.method not in data.IZ_CU_XLPE_3PH:
-        raise ValueError(f"Unsupported installation method '{cable.method}'.")
-    return data.IZ_CU_XLPE_3PH[cable.method]
+    if cable.method not in by_method:
+        raise ValueError(
+            f"Unsupported method '{cable.method}'. Available: {data.SUPPORTED_METHODS}."
+        )
+    return by_method[cable.method]
 
 
 def size_cable(cable: CableInput) -> CableResult:
     ib = design_current(cable.load_kw, cable.voltage_v, cable.phases, cable.power_factor)
-    ca = data.nearest_factor(data.CA_XLPE, cable.ambient_c)
+    ca = data.nearest_factor(data.CA[cable.insulation], cable.ambient_c)
     cg = data.nearest_factor(data.CG, cable.circuits_grouped)
     iz_required = ib / (ca * cg)
 
     iz_table = _iz_table(cable)
+    iscc_a = cable.iscc_ka * 1000.0
+    smin = (short_circuit.min_cross_section(
+                iscc_a, cable.fault_time_s, cable.conductor, cable.insulation)
+            if iscc_a > 0 else 0.0)
     notes = []
 
+    candidate_sizes = [s for s in data.STANDARD_SIZES
+                       if s in iz_table and s in data.REACTANCE]
+
     chosen = None
-    for size in data.STANDARD_SIZES:
-        if size not in iz_table or size not in data.REACTANCE:
-            continue
+    for size in candidate_sizes:
         if iz_table[size] < iz_required:
             continue
-        # ampacity ok at this size; now check voltage drop
         vd = voltage_drop(cable, size, ib)
         vd_pct = vd / cable.voltage_v * 100.0
-        if vd_pct <= cable.vd_limit_pct:
-            chosen = (size, iz_table[size], vd, vd_pct)
-            break
-        else:
-            notes.append(
-                f"{size} mm2 meets ampacity but VD={vd_pct:.2f}% > "
-                f"{cable.vd_limit_pct:.1f}%; stepping up."
-            )
+        if vd_pct > cable.vd_limit_pct:
+            notes.append(f"{size:g} mm2: VD={vd_pct:.2f}% > "
+                         f"{cable.vd_limit_pct:.1f}%; stepping up.")
+            continue
+        if iscc_a > 0 and size < smin:
+            notes.append(f"{size:g} mm2: below S_min={smin:.1f} mm2 "
+                         f"for {cable.iscc_ka:g} kA fault; stepping up.")
+            continue
+        chosen = (size, iz_table[size], vd, vd_pct)
+        break
 
     if chosen is None:
-        # fall back to largest size, report failure
-        size = data.STANDARD_SIZES[-1]
+        size = candidate_sizes[-1]
         vd = voltage_drop(cable, size, ib)
         vd_pct = vd / cable.voltage_v * 100.0
         return CableResult(
             tag=cable.tag, ib_a=ib, iz_required_a=iz_required, ca=ca, cg=cg,
-            size_mm2=size, iz_table_a=iz_table.get(size, 0.0),
-            vd_volts=vd, vd_pct=vd_pct,
-            ampacity_ok=iz_table.get(size, 0.0) >= iz_required,
+            size_mm2=size, iz_table_a=iz_table[size], vd_volts=vd, vd_pct=vd_pct,
+            smin_scc_mm2=smin,
+            ampacity_ok=iz_table[size] >= iz_required,
             vd_ok=vd_pct <= cable.vd_limit_pct,
-            notes=notes + ["No standard size satisfies both checks; review design."],
+            scc_ok=(iscc_a == 0 or size >= smin),
+            notes=notes + ["No standard size satisfies all checks; review design."],
         )
 
     size, iz_t, vd, vd_pct = chosen
     return CableResult(
         tag=cable.tag, ib_a=ib, iz_required_a=iz_required, ca=ca, cg=cg,
         size_mm2=size, iz_table_a=iz_t, vd_volts=vd, vd_pct=vd_pct,
-        ampacity_ok=True, vd_ok=True, notes=notes,
+        smin_scc_mm2=smin, ampacity_ok=True, vd_ok=True,
+        scc_ok=(iscc_a == 0 or size >= smin), notes=notes,
     )
