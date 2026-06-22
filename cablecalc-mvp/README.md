@@ -61,7 +61,7 @@ iscc_ka, fault_time_s` (only the first four are mandatory).
 - [x] Engine extended: Cu/Al, XLPE/PVC, methods B1/C/E/F, short-circuit check.
 - [ ] Swap derived PVC/Al ampacities for exact IEC 60364-5-52 tabulated values.
 - [ ] Add methods A1/A2/B2/D (incl. buried, with soil-resistivity factors).
-- [ ] Add a one-page landing + Gumroad/Lemon Squeezy checkout.
+- [x] One-page landing + Gumroad checkout wiring (`landing/`, see `landing/GUMROAD_SETUP.md`).
 - [ ] Tiered pricing idea:
   - **Lite** (€29, one-off): CSV → HTML/PDF report, Cu/XLPE.
   - **Pro** (€99, one-off): full material/method tables, branded report, batch boards.
