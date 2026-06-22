@@ -5,6 +5,10 @@
 > repos de GitHub (`ariadne`, `cable_expert`, `autoBGT`, `fichaje`, `Node_Equations`).
 > **Pendiente de afinar con el código real** de esos repos (la sesión no tiene acceso de
 > lectura a ellos todavía — ver sección "Qué necesito para profundizar").
+>
+> **Actualización (mismo día):** ya hay un primer producto vendible construido y probado
+> (clean-room, sin tu código de Ariadne) en `cablecalc-mvp/` — calculadora de cables IEC
+> 60364 con informe sellado. Es la materialización de la Vía 1. Ver `cablecalc-mvp/README.md`.
 
 ---
 
